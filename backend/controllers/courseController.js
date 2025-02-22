@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import Course from '../models/Course.js';
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import { Readable } from 'stream';
 
@@ -13,11 +13,18 @@ export const createCourse = async (req, res) => {
   try {
     const { title, description, discordServerLink, price, thumbnail, instructor } = req.body;
 
+
     if (!req.file) {
       return res.status(400).json({ message: 'Video file is required' });
     }
 
-    // Upload video to Cloudinary
+
+    const admin = await Admin.findById(instructor);
+    if (!admin) {
+      return res.status(404).json({ message: 'Instructor not found' });
+    }
+
+
     const streamUpload = () => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -30,12 +37,13 @@ export const createCourse = async (req, res) => {
             else resolve(result);
           }
         );
-        
+
         bufferToStream(req.file.buffer).pipe(stream);
       });
     };
 
     const result = await streamUpload();
+
 
     const newCourse = new Course({
       title,
@@ -44,7 +52,7 @@ export const createCourse = async (req, res) => {
       discordServerLink,
       price,
       thumbnail,
-      instructor
+      instructor: admin.username, 
     });
 
     await newCourse.save();
